@@ -42,6 +42,8 @@ export const STICKERS: Sticker[] = [
 interface StepsContextValue {
   stepBalance: number;
   ownedStickerIds: string[];
+  dailySteps: Record<string, number>;
+  streakDays: number;
   addSteps: (amount: number) => void;
   purchaseSticker: (stickerId: string) => boolean;
 }
@@ -50,23 +52,51 @@ const StepsContext = createContext<StepsContextValue | null>(null);
 
 const BALANCE_KEY = 'stepBalance';
 const OWNED_KEY = 'ownedStickers';
+const DAILY_KEY = 'dailySteps';
+
+function toDateKey(date: Date) {
+  return date.toISOString().split('T')[0];
+}
+
+function calcStreakDays(daily: Record<string, number>): number {
+  let count = 0;
+  const d = new Date();
+  while (true) {
+    const key = toDateKey(d);
+    if (!daily[key]) break;
+    count++;
+    d.setDate(d.getDate() - 1);
+  }
+  return count;
+}
 
 export function StepsProvider({ children }: { children: React.ReactNode }) {
   const [stepBalance, setStepBalance] = useState(0);
   const [ownedStickerIds, setOwnedStickerIds] = useState<string[]>([]);
+  const [dailySteps, setDailySteps] = useState<Record<string, number>>({});
 
   useEffect(() => {
     (async () => {
-      const [savedBalance, savedOwned] = await Promise.all([
+      const [savedBalance, savedOwned, savedDaily] = await Promise.all([
         AsyncStorage.getItem(BALANCE_KEY),
         AsyncStorage.getItem(OWNED_KEY),
+        AsyncStorage.getItem(DAILY_KEY),
       ]);
       if (savedBalance !== null) setStepBalance(parseInt(savedBalance, 10));
       if (savedOwned !== null) setOwnedStickerIds(JSON.parse(savedOwned));
+      if (savedDaily !== null) setDailySteps(JSON.parse(savedDaily));
     })();
   }, []);
 
+  const streakDays = calcStreakDays(dailySteps);
+
   function addSteps(amount: number) {
+    const today = toDateKey(new Date());
+    setDailySteps(prev => {
+      const next = { ...prev, [today]: (prev[today] || 0) + amount };
+      AsyncStorage.setItem(DAILY_KEY, JSON.stringify(next));
+      return next;
+    });
     setStepBalance(prev => {
       const next = prev + amount;
       AsyncStorage.setItem(BALANCE_KEY, String(next));
@@ -98,7 +128,7 @@ export function StepsProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <StepsContext.Provider value={{ stepBalance, ownedStickerIds, addSteps, purchaseSticker }}>
+    <StepsContext.Provider value={{ stepBalance, ownedStickerIds, dailySteps, streakDays, addSteps, purchaseSticker }}>
       {children}
     </StepsContext.Provider>
   );

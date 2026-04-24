@@ -3,12 +3,13 @@ import { StyleSheet, Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { Text, View } from '@/components/Themed';
 import { useSteps } from '@/contexts/StepsContext';
+import StepsGraph from '@/components/StepsGraph';
 
 export default function StepCounterScreen() {
   const [todaySteps, setTodaySteps] = useState(0);
   const [available, setAvailable] = useState<boolean | null>(null);
   const baselineRef = useRef(0);
-  const { stepBalance, addSteps } = useSteps();
+  const { stepBalance, addSteps, dailySteps, streakDays } = useSteps();
 
   useEffect(() => {
     let subscription: ReturnType<typeof Pedometer.watchStepCount> | null = null;
@@ -48,6 +49,7 @@ export default function StepCounterScreen() {
 
   return (
     <View style={styles.container}>
+      <StepsGraph dailySteps={dailySteps} streakDays={streakDays} />
       <Text style={styles.label}>Today's Steps</Text>
 
       <View style={styles.circle}>
