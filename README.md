@@ -1,0 +1,3 @@
+# Step Counter Shop
+
+Exploring vibe-coding tools...
